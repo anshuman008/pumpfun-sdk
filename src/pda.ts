@@ -21,3 +21,12 @@ export const bondingCurvePda = (
         programId,
     )[0];
 };
+
+
+export const creatorVaultPda = (programId: PublicKey, creator: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+        [Buffer.from("creator-vault"), creator.toBuffer()],
+        programId,
+    )[0];
+};
+

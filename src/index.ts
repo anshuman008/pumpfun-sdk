@@ -3,7 +3,7 @@ import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 
 import { clusterApiUrl, Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { bondingCurvePda, globalPda } from "./pda";
+import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 
 
 export const PUMP_PROGRAM_ID = new PublicKey(
@@ -47,6 +47,12 @@ class PumpFunSDK {
     bondingCurvePda(mint: PublicKey | string): PublicKey {
     return bondingCurvePda(this.program.programId, mint);
   }
+
+
+   creatorVaultPda(creator: PublicKey) {
+    return creatorVaultPda(this.program.programId, creator);
+  }
+
 }
 
 (async () => {
