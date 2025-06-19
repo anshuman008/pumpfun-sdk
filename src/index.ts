@@ -32,6 +32,7 @@ class PumpFunSDK {
 
 
     const global = this.program.account.global;
+    const feeWallet = new PublicKey("62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV");
     const programId = this.program.programId;
 
       
@@ -52,6 +53,13 @@ class PumpFunSDK {
    creatorVaultPda(creator: PublicKey) {
     return creatorVaultPda(this.program.programId, creator);
   }
+
+  async fetchGlobal(): Promise<any> {
+    return await this.program.account.global.fetch(
+      this.globalPda(),
+    );
+  }
+  
 
 }
 
