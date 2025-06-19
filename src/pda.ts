@@ -10,3 +10,14 @@ export const globalPda = (programId: PublicKey) => {
         programId,
     )[0];
 }
+
+
+export const bondingCurvePda = (
+    programId: PublicKey,
+    mint: PublicKey | string,
+) => {
+    return PublicKey.findProgramAddressSync(
+        [Buffer.from("bonding-curve"), new PublicKey(mint).toBuffer()],
+        programId,
+    )[0];
+};
