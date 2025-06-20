@@ -2,7 +2,7 @@ import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 
-import { clusterApiUrl, Connection, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { AccountInfo, clusterApiUrl, Connection, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 import { Global } from "./types";
 import { createAssociatedTokenAccountIdempotent, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
@@ -29,26 +29,26 @@ class PumpFunSDK {
   }
 
   // Add methods to interact with the Pump program here
-  async getBuytxs(mint:PublicKey,user:PublicKey) {
-
-
+  async getBuytxs(mint:PublicKey,user:PublicKey,
+        bondingCurveAccountInfo: AccountInfo<Buffer> | null,
+        newCoinCreator: PublicKey,
+        slippage: number = 0.1,
+  ) {
    const instructions:TransactionInstruction[] = [];
-   const userAta = getAssociatedTokenAddressSync(mint,user,true);
+   const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
-   const userTokenAccount = await this.program.provider.connection.getAccountInfo(userAta);
+   const userTokenAccount = await this.program.provider.connection.getAccountInfo(associatedUser);
 
    if(!userTokenAccount){
     instructions.push(
         createAssociatedTokenAccountIdempotentInstruction(
             user,
-            userAta,
+            associatedUser,
             user,
             mint
         )
     )
    };
-
-   
 
 
     const global = this.program.account.global;
@@ -58,6 +58,36 @@ class PumpFunSDK {
     const mintadd = mint;
     const bondigCurve = this.bondingCurvePda(mintadd);
     const bondigCurveAta = getAssociatedTokenAddressSync(mintadd,bondigCurve); 
+
+
+    const amount = 1000000; // Example amount, replace with actual logic
+    const feeBasisPoints = globalData.feeBasisPoints;
+
+         instructions.push(
+          await this.program.methods
+            .buy(
+              amount,
+              solAmount.add(
+                solAmount
+                  .mul(new BN(Math.floor(slippage * 10)))
+                  .div(new BN(1000)),
+              ),
+            )
+            .accountsPartial({
+              feeRecipient: feeWallet,
+              mint,
+              associatedUser,
+              user,
+              creatorVault: this.creatorVaultPda(
+                bondingCurveAccountInfo === null
+                  ? newCoinCreator
+                  : bondingCurve.creator,
+              ),
+            })
+            .instruction(),
+        );
+
+        return instructions;
  
   }
 

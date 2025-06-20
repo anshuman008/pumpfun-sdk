@@ -19,3 +19,13 @@ export interface Global {
   creatorFeeBasisPoints: BN;
   feeRecipients: PublicKey[];
 }
+
+export interface BondingCurve {
+  virtualTokenReserves: BN;
+  virtualSolReserves: BN;
+  realTokenReserves: BN;
+  realSolReserves: BN;
+  tokenTotalSupply: BN;
+  complete: boolean;
+  creator: PublicKey;
+}
