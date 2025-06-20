@@ -6,7 +6,8 @@ import { AccountInfo, clusterApiUrl, Connection, Keypair, PublicKey, Transaction
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 import { BondingCurve, Global } from "./types";
 import {  createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
-
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import dotenv from "dotenv";
 export const PUMP_PROGRAM_ID = new PublicKey(
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
 );
@@ -14,8 +15,8 @@ export const PUMP_AMM_PROGRAM_ID = new PublicKey(
   "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
 );
 
-export const BONDING_CURVE_NEW_SIZE = 150;
 
+dotenv.config();
 
 type PublicKeyData = {};
 type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKeyData;
@@ -88,74 +89,38 @@ class PumpFunSDK {
         return instructions;
   }
 
-  async sellInstructions(
-    global: Global,
-    bondingCurveAccountInfo: AccountInfo<Buffer> | null,
-    mint: PublicKey,
-    user: PublicKey,
-    amount: BN,
-    solAmount: BN,
-    slippage: number,
-  ): Promise<TransactionInstruction[]> {
-    return this.withFixBondingCurve(
-      mint,
-      bondingCurveAccountInfo,
-      user,
-      async () => {
-        return [
+  async getSelltxs(mint:PublicKey,user:PublicKey,
+        slippage: number,
+        amount: BN,
+        solAmount: BN,
+  ) {
+   const instructions:TransactionInstruction[] = [];
+   const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
+
+    const globalPda = this.globalPda();
+    const globalData = await this.program.account.global.fetch(globalPda);
+    const feeWallet = getFeeRecipient(globalData);
+
+         instructions.push(
           await this.program.methods
             .sell(
               amount,
-              solAmount.sub(
+              solAmount.add(
                 solAmount
                   .mul(new BN(Math.floor(slippage * 10)))
                   .div(new BN(1000)),
               ),
             )
             .accountsPartial({
-              feeRecipient: getFeeRecipient(global),
+              feeRecipient: feeWallet,
               mint,
-              associatedUser: getAssociatedTokenAddressSync(mint, user, true),
+              associatedUser,
               user,
             })
             .instruction(),
-        ];
-      },
-    );
-  }
+        );
 
-
-
-    private async withFixBondingCurve(
-    mint: PublicKey,
-    bondingCurveAccountInfo: AccountInfo<Buffer> | null,
-    user: PublicKey,
-    block: () => Promise<TransactionInstruction[]>,
-  ): Promise<TransactionInstruction[]> {
-    if (
-      bondingCurveAccountInfo === null ||
-      bondingCurveAccountInfo.data.length < BONDING_CURVE_NEW_SIZE
-    ) {
-      return [
-        await this.extendAccount(this.bondingCurvePda(mint), user),
-        ...(await block()),
-      ];
-    }
-
-    return await block();
-  }
-
-  async extendAccount(
-    account: PublicKey,
-    user: PublicKey,
-  ): Promise<TransactionInstruction> {
-    return this.program.methods
-      .extendAccount()
-      .accountsPartial({
-        account,
-        user,
-      })
-      .instruction();
+        return instructions;
   }
 
    globalPda() {
@@ -197,8 +162,10 @@ function getFeeRecipient(global: Global): PublicKey {
     const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
     const sdk = new PumpFunSDK(connection);
 
-
-    const global = await sdk.fetchGlobal();
+    
+  const signer = Keypair.fromSecretKey(
+    bs58.decode(process.env.PRIVATE_KEY || "")
+  );
     const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
     const user = new PublicKey("C8Kerf9QEbVAefvkqFx7TNwfqcgjowc9hhP66dzrKqum");
     const bonding_curvePda =  sdk.bondingCurvePda(mint);
@@ -214,15 +181,19 @@ function getFeeRecipient(global: Global): PublicKey {
     const bonding_curve_data = await sdk.fetchBondingCurve(mint);
     // const tx1 = await sdk.getBuytxs(mint,user,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(25000*1000000), new BN(1000000));
 
-    const tx2 = await sdk.sellInstructions(
-        global,
-        bondingCurveAccountInfo,
-        mint,
-        user,
-        new BN(1000000),
-        new BN(-1),
-        10
-    );
+
+    const userAta = getAssociatedTokenAddressSync(mint, user, true);
+    console.log("User ATA:", userAta.toBase58());
+
+    const tokenAccountInfo = await connection.getTokenAccountBalance(userAta);
+
+    if (!tokenAccountInfo) {
+        console.error("User ATA account not found");
+        return;
+    }
+
+    console.log("User Token Account Info:", tokenAccountInfo.value.uiAmount);
+    const tx2 = await sdk.getSelltxs(mint,user,10,new BN(tokenAccountInfo.value.amount),new BN(-1));
 
     console.log("Transaction Instructions:", tx2);
 
@@ -233,5 +204,9 @@ function getFeeRecipient(global: Global): PublicKey {
 
     const simulatedTx = await connection.simulateTransaction(transection);
     console.log("Simulation Result:", simulatedTx);
+
+    const signature = await connection.sendTransaction(transection, []);
+
+
 })();
 
