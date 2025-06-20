@@ -1,10 +1,10 @@
 import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
-
+import BN from "bn.js";
 import { AccountInfo, clusterApiUrl, Connection, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
-import { Global } from "./types";
+import { BondingCurve, Global } from "./types";
 import { createAssociatedTokenAccountIdempotent, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 export const PUMP_PROGRAM_ID = new PublicKey(
@@ -32,7 +32,10 @@ class PumpFunSDK {
   async getBuytxs(mint:PublicKey,user:PublicKey,
         bondingCurveAccountInfo: AccountInfo<Buffer> | null,
         newCoinCreator: PublicKey,
-        slippage: number = 0.1,
+        slippage: number,
+        bondingCurve: BondingCurve,
+        amount: BN,
+        solAmount: BN,
   ) {
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
@@ -50,18 +53,10 @@ class PumpFunSDK {
     )
    };
 
-
-    const global = this.program.account.global;
     const globalPda = this.globalPda();
-    const globalData = await global.fetch(globalPda);
+    const globalData = await this.program.account.global.fetch(globalPda);
     const feeWallet = getFeeRecipient(globalData);
-    const mintadd = mint;
-    const bondigCurve = this.bondingCurvePda(mintadd);
-    const bondigCurveAta = getAssociatedTokenAddressSync(mintadd,bondigCurve); 
 
-
-    const amount = 1000000; // Example amount, replace with actual logic
-    const feeBasisPoints = globalData.feeBasisPoints;
 
          instructions.push(
           await this.program.methods
@@ -88,7 +83,6 @@ class PumpFunSDK {
         );
 
         return instructions;
- 
   }
 
 
