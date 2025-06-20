@@ -14,6 +14,9 @@ export const PUMP_AMM_PROGRAM_ID = new PublicKey(
   "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
 );
 
+export const BONDING_CURVE_NEW_SIZE = 150;
+
+
 type PublicKeyData = {};
 type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKeyData;
 
@@ -30,7 +33,6 @@ class PumpFunSDK {
     this.program = pumpProgram;
   }
 
-  // Add methods to interact with the Pump program here
   async getBuytxs(mint:PublicKey,user:PublicKey,
         bondingCurveAccountInfo: AccountInfo<Buffer> | null,
         newCoinCreator: PublicKey,
@@ -59,7 +61,6 @@ class PumpFunSDK {
     const globalData = await this.program.account.global.fetch(globalPda);
     const feeWallet = getFeeRecipient(globalData);
 
-
          instructions.push(
           await this.program.methods
             .buy(
@@ -87,6 +88,75 @@ class PumpFunSDK {
         return instructions;
   }
 
+  async sellInstructions(
+    global: Global,
+    bondingCurveAccountInfo: AccountInfo<Buffer> | null,
+    mint: PublicKey,
+    user: PublicKey,
+    amount: BN,
+    solAmount: BN,
+    slippage: number,
+  ): Promise<TransactionInstruction[]> {
+    return this.withFixBondingCurve(
+      mint,
+      bondingCurveAccountInfo,
+      user,
+      async () => {
+        return [
+          await this.program.methods
+            .sell(
+              amount,
+              solAmount.sub(
+                solAmount
+                  .mul(new BN(Math.floor(slippage * 10)))
+                  .div(new BN(1000)),
+              ),
+            )
+            .accountsPartial({
+              feeRecipient: getFeeRecipient(global),
+              mint,
+              associatedUser: getAssociatedTokenAddressSync(mint, user, true),
+              user,
+            })
+            .instruction(),
+        ];
+      },
+    );
+  }
+
+
+
+    private async withFixBondingCurve(
+    mint: PublicKey,
+    bondingCurveAccountInfo: AccountInfo<Buffer> | null,
+    user: PublicKey,
+    block: () => Promise<TransactionInstruction[]>,
+  ): Promise<TransactionInstruction[]> {
+    if (
+      bondingCurveAccountInfo === null ||
+      bondingCurveAccountInfo.data.length < BONDING_CURVE_NEW_SIZE
+    ) {
+      return [
+        await this.extendAccount(this.bondingCurvePda(mint), user),
+        ...(await block()),
+      ];
+    }
+
+    return await block();
+  }
+
+  async extendAccount(
+    account: PublicKey,
+    user: PublicKey,
+  ): Promise<TransactionInstruction> {
+    return this.program.methods
+      .extendAccount()
+      .accountsPartial({
+        account,
+        user,
+      })
+      .instruction();
+  }
 
    globalPda() {
     return globalPda(this.program.programId);
@@ -128,7 +198,8 @@ function getFeeRecipient(global: Global): PublicKey {
     const sdk = new PumpFunSDK(connection);
 
 
-    const mint = new PublicKey("HC3d5i5KbFZxt3D2fPCukntsCzPSjUZEGQiCJ2Wvpump");
+    const global = await sdk.fetchGlobal();
+    const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
     const user = new PublicKey("C8Kerf9QEbVAefvkqFx7TNwfqcgjowc9hhP66dzrKqum");
     const bonding_curvePda =  sdk.bondingCurvePda(mint);
 
@@ -141,11 +212,21 @@ function getFeeRecipient(global: Global): PublicKey {
     }
 
     const bonding_curve_data = await sdk.fetchBondingCurve(mint);
-    const tx1 = await sdk.getBuytxs(mint,user,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(25000*1000000), new BN(1000000));
+    // const tx1 = await sdk.getBuytxs(mint,user,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(25000*1000000), new BN(1000000));
 
-    console.log("Transaction Instructions:", tx1);
+    const tx2 = await sdk.sellInstructions(
+        global,
+        bondingCurveAccountInfo,
+        mint,
+        user,
+        new BN(1000000),
+        new BN(-1),
+        10
+    );
 
-    const transection = new Transaction().add(...tx1);
+    console.log("Transaction Instructions:", tx2);
+
+    const transection = new Transaction().add(...tx2);
     const latestBlockhash = await connection.getLatestBlockhash();
     transection.recentBlockhash = latestBlockhash.blockhash;
     transection.feePayer = user;
