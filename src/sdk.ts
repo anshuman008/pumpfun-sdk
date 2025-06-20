@@ -2,11 +2,10 @@ import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
-import { AccountInfo, clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { AccountInfo, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 import { BondingCurve, Global } from "./types";
 import {  createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import dotenv from "dotenv";
 export const PUMP_PROGRAM_ID = new PublicKey(
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
@@ -41,7 +40,7 @@ export class PumpFunSDK {
         bondingCurve: BondingCurve,
         amount: BN,
         solAmount: BN,
-  ) {
+  ): Promise<TransactionInstruction[]> {
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
@@ -93,7 +92,7 @@ export class PumpFunSDK {
         slippage: number,
         amount: BN,
         solAmount: BN,
-  ) {
+  ): Promise<TransactionInstruction[]> {
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
