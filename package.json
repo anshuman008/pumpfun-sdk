@@ -1,7 +1,15 @@
 {
-  "devDependencies": {
-    "@types/bn.js": "^5.2.0",
-    "typescript": "^5.8.3"
+  "name": "latest-pumpfun-sdk",
+  "version": "1.0.2",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
@@ -9,5 +17,9 @@
     "@solana/web3.js": "^1.98.2",
     "bn.js": "^5.2.2",
     "dotenv": "^16.5.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "typescript": "^5.8.3"
   }
 }
