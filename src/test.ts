@@ -1,4 +1,4 @@
-import { clusterApiUrl, Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction } from "@solana/web3.js";
 import { PumpFunSDK } from "./sdk";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
@@ -108,3 +108,6 @@ const sellToken = async () => {
 };
 
 
+// createToken();
+// buyToken();
+sellToken()
