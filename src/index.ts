@@ -2,9 +2,10 @@ import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 
-import { clusterApiUrl, Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { clusterApiUrl, Connection, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
-
+import { Global } from "./types";
+import { createAssociatedTokenAccountIdempotent, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 export const PUMP_PROGRAM_ID = new PublicKey(
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
@@ -28,15 +29,35 @@ class PumpFunSDK {
   }
 
   // Add methods to interact with the Pump program here
-  async getBuytxs() {
+  async getBuytxs(mint:PublicKey,user:PublicKey) {
+
+
+   const instructions:TransactionInstruction[] = [];
+   const userAta = getAssociatedTokenAddressSync(mint,user,true);
+
+   const userTokenAccount = await this.program.provider.connection.getAccountInfo(userAta);
+
+   if(!userTokenAccount){
+    instructions.push(
+        createAssociatedTokenAccountIdempotentInstruction(
+            user,
+            userAta,
+            user,
+            mint
+        )
+    )
+   };
+
+   
 
 
     const global = this.program.account.global;
-    const feeWallet = new PublicKey("62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV");
-    const programId = this.program.programId;
-
-      
-
+    const globalPda = this.globalPda();
+    const globalData = await global.fetch(globalPda);
+    const feeWallet = getFeeRecipient(globalData);
+    const mintadd = mint;
+    const bondigCurve = this.bondingCurvePda(mintadd);
+    const bondigCurveAta = getAssociatedTokenAddressSync(mintadd,bondigCurve); 
  
   }
 
@@ -59,9 +80,16 @@ class PumpFunSDK {
       this.globalPda(),
     );
   }
-  
+
 
 }
+
+
+function getFeeRecipient(global: Global): PublicKey {
+  const feeRecipients = [global.feeRecipient, ...global.feeRecipients];
+  return feeRecipients[Math.floor(Math.random() * feeRecipients.length)];
+}
+
 
 (async () => {
     const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
