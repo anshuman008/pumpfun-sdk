@@ -2,7 +2,7 @@ import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
-import { AccountInfo, clusterApiUrl, Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { AccountInfo, clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 import { BondingCurve, Global } from "./types";
 import {  createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
@@ -167,7 +167,6 @@ function getFeeRecipient(global: Global): PublicKey {
     bs58.decode(process.env.PRIVATE_KEY || "")
   );
     const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
-    const user = new PublicKey("C8Kerf9QEbVAefvkqFx7TNwfqcgjowc9hhP66dzrKqum");
     const bonding_curvePda =  sdk.bondingCurvePda(mint);
 
     console.log("Bonding Curve PDA:", bonding_curvePda.toBase58());
@@ -179,10 +178,10 @@ function getFeeRecipient(global: Global): PublicKey {
     }
 
     const bonding_curve_data = await sdk.fetchBondingCurve(mint);
-    // const tx1 = await sdk.getBuytxs(mint,user,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(25000*1000000), new BN(1000000));
+    // const tx1 = await sdk.getBuytxs(mint,signer.publicKey,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
 
 
-    const userAta = getAssociatedTokenAddressSync(mint, user, true);
+    const userAta = getAssociatedTokenAddressSync(mint, signer.publicKey, true);
     console.log("User ATA:", userAta.toBase58());
 
     const tokenAccountInfo = await connection.getTokenAccountBalance(userAta);
@@ -192,21 +191,24 @@ function getFeeRecipient(global: Global): PublicKey {
         return;
     }
 
-    console.log("User Token Account Info:", tokenAccountInfo.value.uiAmount);
-    const tx2 = await sdk.getSelltxs(mint,user,10,new BN(tokenAccountInfo.value.amount),new BN(-1));
+    console.log("User Token Account Hoding amount:", tokenAccountInfo.value.uiAmount);
+    const tx2 = await sdk.getSelltxs(mint,signer.publicKey,10,new BN(tokenAccountInfo.value.amount),new BN(-1));
 
     console.log("Transaction Instructions:", tx2);
 
     const transection = new Transaction().add(...tx2);
     const latestBlockhash = await connection.getLatestBlockhash();
     transection.recentBlockhash = latestBlockhash.blockhash;
-    transection.feePayer = user;
+    transection.feePayer = signer.publicKey;
 
     const simulatedTx = await connection.simulateTransaction(transection);
     console.log("Simulation Result:", simulatedTx);
 
-    const signature = await connection.sendTransaction(transection, []);
+    const signature = await connection.sendTransaction(transection, [signer]);
 
+    console.log("Transaction Signature:", signature);
+    const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    console.log("Transaction Confirmation:", confirmation);
 
 })();
 
