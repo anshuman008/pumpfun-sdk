@@ -21,7 +21,7 @@ dotenv.config();
 type PublicKeyData = {};
 type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKeyData;
 
-class PumpFunSDK {
+export class PumpFunSDK {
   private program: anchor.Program<Pump>;
 
   constructor(connection: Connection) {
@@ -178,61 +178,5 @@ function getFeeRecipient(global: Global): PublicKey {
 }
 
 
-(async () => {
-    const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
-    const sdk = new PumpFunSDK(connection);
 
-    
-  const signer = Keypair.fromSecretKey(
-    bs58.decode(process.env.PRIVATE_KEY || "")
-  );
-    const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
-    const bonding_curvePda =  sdk.bondingCurvePda(mint);
-
-    console.log("Bonding Curve PDA:", bonding_curvePda.toBase58());
-    const bondingCurveAccountInfo = await connection.getAccountInfo(bonding_curvePda);
-
-    if (!bondingCurveAccountInfo) {
-        console.error("Bonding Curve account not found");
-        return;
-    }
-
-    const bonding_curve_data = await sdk.fetchBondingCurve(mint);
-    // const tx1 = await sdk.getBuytxs(mint,signer.publicKey,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
-
-
-    // const userAta = getAssociatedTokenAddressSync(mint, signer.publicKey, true);
-    // console.log("User ATA:", userAta.toBase58());
-
-    // const tokenAccountInfo = await connection.getTokenAccountBalance(userAta);
-
-    // if (!tokenAccountInfo) {
-    //     console.error("User ATA account not found");
-    //     return;
-    // }
-
-    // console.log("User Token Account Hoding amount:", tokenAccountInfo.value.uiAmount);
-    // const tx2 = await sdk.getSelltxs(mint,signer.publicKey,10,new BN(tokenAccountInfo.value.amount),new BN(-1));
-
-
-    const newMint = Keypair.generate();
-
-    const tx3 = await sdk.getCreatetxs(newMint.publicKey,"PUMP SDK","PSDK","https://ipfs.io/ipfs/QmNwbGHa81nQAygoH5LWQU2KTrzqHQRSpUkAUgn7R9gzAv",signer.publicKey,signer.publicKey)
-    console.log("Transaction Instructions:", tx3);
-
-    const transection = new Transaction().add(tx3);
-    const latestBlockhash = await connection.getLatestBlockhash();
-    transection.recentBlockhash = latestBlockhash.blockhash;
-    transection.feePayer = signer.publicKey;
-
-    const simulatedTx = await connection.simulateTransaction(transection);
-    console.log("Simulation Result:", simulatedTx);
-
-    // const signature = await connection.sendTransaction(transection, [signer]);
-
-    // console.log("Transaction Signature:", signature);
-    // const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    // console.log("Transaction Confirmation:", confirmation);
-
-})();
 
