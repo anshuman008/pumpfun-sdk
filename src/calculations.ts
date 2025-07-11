@@ -3,7 +3,7 @@ import { BondingCurve } from "./types";
 
 
 
-const getBuyPrice = (amount: bigint , virtual_sol_reserve: bigint ,virtual_token_reserve: bigint, real_token_reserve: bigint): bigint => {
+export const getBuyPrice = (amount: bigint , virtual_sol_reserve: bigint ,virtual_token_reserve: bigint, real_token_reserve: bigint): bigint => {
 
 
   //@ts-ignore
@@ -44,13 +44,3 @@ const getBuyPrice = (amount: bigint , virtual_sol_reserve: bigint ,virtual_token
 }
 
 
- export const getTokenAmount =  (bondingCurve:BondingCurve,Solamount:number) => {
-  
-    const amount = Solamount * LAMPORTS_PER_SOL;
-
-    const tokenamount = getBuyPrice(BigInt(amount), BigInt(bondingCurve.virtualSolReserves.toNumber()), BigInt(bondingCurve.virtualTokenReserves.toNumber()), BigInt(bondingCurve.realTokenReserves.toNumber()));
-
-    // console.log("TOken amount ->>>>>>>>>>",Number(tokenamount)/1000000-1000)
-
-    return Number(tokenamount);
-};

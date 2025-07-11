@@ -8,6 +8,7 @@ import { BondingCurve, Global } from "./types";
 import {  createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import dotenv from "dotenv";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import { getBuyPrice } from "./calculations";
 export const PUMP_PROGRAM_ID = new PublicKey(
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
 );
@@ -325,7 +326,7 @@ export class PumpFunSDK {
      return globalPda(this.program.programId);
    }
 
-    bondingCurvePda(mint: PublicKey | string): PublicKey {
+  bondingCurvePda(mint: PublicKey | string): PublicKey {
     return bondingCurvePda(this.program.programId, mint);
   }
 
@@ -333,6 +334,15 @@ export class PumpFunSDK {
    creatorVaultPda(creator: PublicKey) {
     return creatorVaultPda(this.program.programId, creator);
   }
+
+   getTokenAmount(bondingCurve:BondingCurve,Solamount:number):Number{
+  
+    const amount = Solamount * LAMPORTS_PER_SOL;
+
+    const tokenamount = getBuyPrice(BigInt(amount), BigInt(bondingCurve.virtualSolReserves.toNumber()), BigInt(bondingCurve.virtualTokenReserves.toNumber()), BigInt(bondingCurve.realTokenReserves.toNumber()));
+
+    return Number(tokenamount);
+   };
 
   async fetchGlobal(): Promise<any> {
     return await this.program.account.global.fetch(

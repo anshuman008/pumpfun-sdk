@@ -41,7 +41,7 @@ const signer = Keypair.fromSecretKey(
     const simulatedTx = await connection.simulateTransaction(transection);
     console.log("Simulation Result:", simulatedTx);
 
-    const signature = await connection.sendTransaction(transection, [signer]);
+    const signature = await connection.sendTransaction(transection, [signer,tokenMint]);
     console.log("Transaction Signature:", signature);
     const confirmation = await connection.confirmTransaction(signature, "confirmed");
     }
@@ -54,7 +54,7 @@ const signer = Keypair.fromSecretKey(
     const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
     const bonding_curve_data = await sdk.fetchBondingCurve(mint);
     const solAmount = 0.2;
-    const tokenAmount = getTokenAmount(bonding_curve_data,solAmount);
+    const tokenAmount = sdk.getTokenAmount(bonding_curve_data,solAmount);
 
     const tx1 = await sdk.getBuyTxs(mint,signer.publicKey,100, new BN(tokenAmount),new BN(solAmount*LAMPORTS_PER_SOL) );
     
