@@ -83,12 +83,12 @@ export class PumpFunSDK {
       }
 
 
-       if (slippage < 0 || slippage > 100) {
+       if (slippage < 0 ) {
         return {
           success: false,
           error: {
             type: PumpFunErrorType.INVALID_PARAMETERS,
-            message: "Slippage must be between 0 and 100",
+            message: "Slippage canot be in negative",
             details: { slippage }
           }
         };
@@ -181,7 +181,34 @@ export class PumpFunSDK {
         slippage: number,
         amount: BN,
         solAmount: BN,
-  ): Promise<TransactionInstruction[]> {
+  ):  Promise<PumpFunResult<TransactionInstruction[]>> {
+
+    try{
+
+
+       if (!mint || !user || !amount || !solAmount) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Invalid parameters provided",
+            details: { mint, user, amount, solAmount }
+          }
+        };
+      }
+
+
+       if (slippage < 0 ) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Slippage cant be in negative",
+            details: { slippage }
+          }
+        };
+      }
+
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
@@ -208,7 +235,25 @@ export class PumpFunSDK {
             .instruction(),
         );
 
-        return instructions;
+        return {
+        success: true,
+        data: instructions
+      };
+    }
+    catch(error){
+     console.error("Error in getSellTxs:", error);
+      return {
+        success: false,
+        error: {
+          type: PumpFunErrorType.UNKNOWN_ERROR,
+          message: error instanceof Error ? error.message : "An unknown error occurred",
+          details: error
+        }
+      };
+
+    }
+
+
   }
 
   async getCreateTxs(
