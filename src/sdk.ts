@@ -305,9 +305,25 @@ export class PumpFunSDK {
     }
   }
 
-   globalPda() {
-    return globalPda(this.program.programId);
+  
+  async createAndBuy(
+    mint: PublicKey,
+    name: string,
+    symbol: string,
+    uri: string,
+    creator: PublicKey,
+    user: PublicKey,
+    amount: BN,
+    solAmount: BN,
+  ){
+
   }
+  
+
+
+   globalPda() {
+     return globalPda(this.program.programId);
+   }
 
     bondingCurvePda(mint: PublicKey | string): PublicKey {
     return bondingCurvePda(this.program.programId, mint);
