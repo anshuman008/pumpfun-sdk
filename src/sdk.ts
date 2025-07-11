@@ -2,11 +2,12 @@ import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
-import { AccountInfo, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { AccountInfo, clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 import { BondingCurve, Global } from "./types";
 import {  createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import dotenv from "dotenv";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 export const PUMP_PROGRAM_ID = new PublicKey(
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
 );
@@ -19,7 +20,7 @@ dotenv.config();
 
 type PublicKeyData = {};
 type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKeyData;
-
+type Error = {};
 export class PumpFunSDK {
   private program: anchor.Program<Pump>;
 
@@ -34,13 +35,24 @@ export class PumpFunSDK {
   }
 
   async getBuytxs(mint:PublicKey,user:PublicKey,
-        bondingCurveAccountInfo: AccountInfo<Buffer> | null,
-        newCoinCreator: PublicKey,
         slippage: number,
-        bondingCurve: BondingCurve,
         amount: BN,
         solAmount: BN,
-  ): Promise<TransactionInstruction[]> {
+  ): Promise<TransactionInstruction[] |Error > {
+
+
+    const bonding_curvePda =  this.bondingCurvePda(mint);
+
+    console.log("Bonding Curve PDA:", bonding_curvePda.toBase58());
+    const bondingCurveAccountInfo = await this.program.provider.connection.getAccountInfo(bonding_curvePda);
+
+    if (!bondingCurveAccountInfo) {
+        return {
+          message:"Bonding Curve account not found"
+        }
+    }
+
+   const bonding_curve_data = await this.fetchBondingCurve(mint);
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
@@ -78,8 +90,8 @@ export class PumpFunSDK {
               user,
               creatorVault: this.creatorVaultPda(
                 bondingCurveAccountInfo === null
-                  ? newCoinCreator
-                  : bondingCurve.creator,
+                  ? bonding_curve_data.creator
+                  : bonding_curve_data.creator,
               ),
             })
             .instruction(),
@@ -175,6 +187,7 @@ function getFeeRecipient(global: Global): PublicKey {
   const feeRecipients = [global.feeRecipient, ...global.feeRecipients];
   return feeRecipients[Math.floor(Math.random() * feeRecipients.length)];
 }
+
 
 
 

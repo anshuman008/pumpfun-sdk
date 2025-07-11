@@ -41,20 +41,11 @@ const buyToken = async() =>{
 
 
     const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
-    const bonding_curvePda =  sdk.bondingCurvePda(mint);
 
-    console.log("Bonding Curve PDA:", bonding_curvePda.toBase58());
-    const bondingCurveAccountInfo = await connection.getAccountInfo(bonding_curvePda);
+    const tx1 = await sdk.getBuytxs(mint,signer.publicKey,10, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
 
-    if (!bondingCurveAccountInfo) {
-        console.error("Bonding Curve account not found");
-        return;
-    }
-
-    const bonding_curve_data = await sdk.fetchBondingCurve(mint);
-    const tx1 = await sdk.getBuytxs(mint,signer.publicKey,bondingCurveAccountInfo,bonding_curve_data.creator,10,bonding_curve_data, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
-
-
+    
+    //@ts-ignore
     const transection = new Transaction().add(...tx1);
     const latestBlockhash = await connection.getLatestBlockhash();
     transection.recentBlockhash = latestBlockhash.blockhash;
@@ -109,5 +100,5 @@ const sellToken = async () => {
 
 
 // createToken();
-// buyToken();
-sellToken()
+buyToken();
+// sellToken()
