@@ -340,7 +340,7 @@ export class PumpFunSDK {
     );
   }
 
-    async fetchBondingCurve(mint: PublicKeyInitData): Promise<BondingCurve> {
+  async fetchBondingCurve(mint: PublicKeyInitData): Promise<BondingCurve> {
     return await this.program.account.bondingCurve.fetch(
       this.bondingCurvePda(mint as PublicKey),
     );

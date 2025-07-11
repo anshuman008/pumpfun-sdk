@@ -47,29 +47,28 @@ const buyToken = async() =>{
 
     const bonding_curve_data = await sdk.fetchBondingCurve(mint);
 
-     const res =  getTokenAmount(bonding_curve_data,0.1);
+    
+    const solAmount = 0.2;
+    const tokenAmount = getTokenAmount(bonding_curve_data,solAmount);
 
-     console.log("here is amount", res/1000000);
-
-    // const tx1 = await sdk.getBuyTxs(mint,signer.publicKey,10, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
+    const tx1 = await sdk.getBuyTxs(mint,signer.publicKey,100, new BN(tokenAmount),new BN(solAmount*LAMPORTS_PER_SOL) );
 
     
+    if(tx1.success){
+    const transection = new Transaction().add(...tx1.data);
+    const latestBlockhash = await connection.getLatestBlockhash();
+    transection.recentBlockhash = latestBlockhash.blockhash;
+    transection.feePayer = signer.publicKey;
 
-    // if(tx1.success){
-    // const transection = new Transaction().add(...tx1.data);
-    // const latestBlockhash = await connection.getLatestBlockhash();
-    // transection.recentBlockhash = latestBlockhash.blockhash;
-    // transection.feePayer = signer.publicKey;
+    const simulatedTx = await connection.simulateTransaction(transection);
+    console.log("Simulation Result:", simulatedTx);
 
-    // const simulatedTx = await connection.simulateTransaction(transection);
-    // console.log("Simulation Result:", simulatedTx);
+    // const signature = await connection.sendTransaction(transection, [signer]);
 
-    // // const signature = await connection.sendTransaction(transection, [signer]);
-
-    // // console.log("Transaction Signature:", signature);
-    // // const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    // // console.log("Transaction Confirmation:", confirmation);
-    // }
+    // console.log("Transaction Signature:", signature);
+    // const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    // console.log("Transaction Confirmation:", confirmation);
+    }
 
 
 }
