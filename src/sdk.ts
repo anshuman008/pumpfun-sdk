@@ -21,6 +21,34 @@ dotenv.config();
 type PublicKeyData = {};
 type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKeyData;
 type Error = {};
+
+
+// Define specific error types for better error handling
+export enum PumpFunErrorType {
+  BONDING_CURVE_NOT_FOUND = "BONDING_CURVE_NOT_FOUND",
+  GLOBAL_DATA_NOT_FOUND = "GLOBAL_DATA_NOT_FOUND",
+  INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  INVALID_PARAMETERS = "INVALID_PARAMETERS",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR"
+}
+
+export interface PumpFunError {
+  type: PumpFunErrorType;
+  message: string;
+  details?: any;
+}
+
+// Result type for better type safety
+export type PumpFunResult<T> = {
+  success: true;
+  data: T;
+} | {
+  success: false;
+  error: PumpFunError;
+};
+
+
 export class PumpFunSDK {
   private program: anchor.Program<Pump>;
 
@@ -34,11 +62,37 @@ export class PumpFunSDK {
     this.program = pumpProgram;
   }
 
-  async getBuytxs(mint:PublicKey,user:PublicKey,
+  async getBuyTxs(mint:PublicKey,user:PublicKey,
         slippage: number,
         amount: BN,
         solAmount: BN,
-  ): Promise<TransactionInstruction[] |Error > {
+  ): Promise<PumpFunResult<TransactionInstruction[]>>  {
+
+   try{
+
+
+      if (!mint || !user || !amount || !solAmount) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Invalid parameters provided",
+            details: { mint, user, amount, solAmount }
+          }
+        };
+      }
+
+
+       if (slippage < 0 || slippage > 100) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Slippage must be between 0 and 100",
+            details: { slippage }
+          }
+        };
+      }
 
 
     const bonding_curvePda =  this.bondingCurvePda(mint);
@@ -46,11 +100,17 @@ export class PumpFunSDK {
     console.log("Bonding Curve PDA:", bonding_curvePda.toBase58());
     const bondingCurveAccountInfo = await this.program.provider.connection.getAccountInfo(bonding_curvePda);
 
-    if (!bondingCurveAccountInfo) {
+
+   if (!bondingCurveAccountInfo) {
         return {
-          message:"Bonding Curve account not found"
-        }
-    }
+          success: false,
+          error: {
+            type: PumpFunErrorType.BONDING_CURVE_NOT_FOUND,
+            message: "Bonding Curve account not found for this token",
+            details: { mint: mint.toBase58(), bondingCurvePda: bonding_curvePda.toBase58() }
+          }
+        };
+      }
 
    const bonding_curve_data = await this.fetchBondingCurve(mint);
    const instructions:TransactionInstruction[] = [];
@@ -97,10 +157,27 @@ export class PumpFunSDK {
             .instruction(),
         );
 
-        return instructions;
+      return {
+        success: true,
+        data: instructions
+      };
+
+   }
+   catch(error){
+    console.error("Error in getBuyTxs:", error);
+      return {
+        success: false,
+        error: {
+          type: PumpFunErrorType.UNKNOWN_ERROR,
+          message: error instanceof Error ? error.message : "An unknown error occurred",
+          details: error
+        }
+      };
+   }
+
   }
 
-  async getSelltxs(mint:PublicKey,user:PublicKey,
+  async getSellTxs(mint:PublicKey,user:PublicKey,
         slippage: number,
         amount: BN,
         solAmount: BN,
@@ -134,7 +211,7 @@ export class PumpFunSDK {
         return instructions;
   }
 
-  async getCreatetxs(
+  async getCreateTxs(
     mint: PublicKey,
     name: string,
     symbol: string,

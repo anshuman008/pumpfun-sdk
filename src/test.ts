@@ -12,28 +12,28 @@ const signer = Keypair.fromSecretKey(
 
 
 
-const createToken = async() =>{
-    const sdk = new PumpFunSDK(connection);
+// const createToken = async() =>{
+//     const sdk = new PumpFunSDK(connection);
 
-    const tokenMint = Keypair.generate();
-    const tx3 = await sdk.getCreatetxs(tokenMint.publicKey,"PUMP SDK","PSDK","https://ipfs.io/ipfs/QmNwbGHa81nQAygoH5LWQU2KTrzqHQRSpUkAUgn7R9gzAv",signer.publicKey,signer.publicKey)
+//     const tokenMint = Keypair.generate();
+//     const tx3 = await sdk.getCreateTxs(tokenMint.publicKey,"PUMP SDK","PSDK","https://ipfs.io/ipfs/QmNwbGHa81nQAygoH5LWQU2KTrzqHQRSpUkAUgn7R9gzAv",signer.publicKey,signer.publicKey)
 
-    console.log("Transaction Instructions:", tx3);
+//     console.log("Transaction Instructions:", tx3);
 
-    const transection = new Transaction().add(tx3);
-    const latestBlockhash = await connection.getLatestBlockhash();
-    transection.recentBlockhash = latestBlockhash.blockhash;
-    transection.feePayer = signer.publicKey;
+//     const transection = new Transaction().add(tx3);
+//     const latestBlockhash = await connection.getLatestBlockhash();
+//     transection.recentBlockhash = latestBlockhash.blockhash;
+//     transection.feePayer = signer.publicKey;
 
-    const simulatedTx = await connection.simulateTransaction(transection);
-    console.log("Simulation Result:", simulatedTx);
+//     const simulatedTx = await connection.simulateTransaction(transection);
+//     console.log("Simulation Result:", simulatedTx);
 
-    // const signature = await connection.sendTransaction(transection, [signer]);
+//     // const signature = await connection.sendTransaction(transection, [signer]);
 
-    // console.log("Transaction Signature:", signature);
-    // const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    // console.log("Transaction Confirmation:", confirmation);
-}
+//     // console.log("Transaction Signature:", signature);
+//     // const confirmation = await connection.confirmTransaction(signature, "confirmed");
+//     // console.log("Transaction Confirmation:", confirmation);
+// }
 
 
 const buyToken = async() =>{
@@ -42,11 +42,12 @@ const buyToken = async() =>{
 
     const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
 
-    const tx1 = await sdk.getBuytxs(mint,signer.publicKey,10, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
+    const tx1 = await sdk.getBuyTxs(mint,signer.publicKey,10, new BN(343325*1000000), new BN(0.1 * LAMPORTS_PER_SOL));
 
     
-    //@ts-ignore
-    const transection = new Transaction().add(...tx1);
+
+    if(tx1.success){
+    const transection = new Transaction().add(...tx1.data);
     const latestBlockhash = await connection.getLatestBlockhash();
     transection.recentBlockhash = latestBlockhash.blockhash;
     transection.feePayer = signer.publicKey;
@@ -59,44 +60,46 @@ const buyToken = async() =>{
     // console.log("Transaction Signature:", signature);
     // const confirmation = await connection.confirmTransaction(signature, "confirmed");
     // console.log("Transaction Confirmation:", confirmation);
+    }
+
 
 }
 
 
 
-const sellToken = async () => {
+// const sellToken = async () => {
 
-    const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
-    const sdk = new PumpFunSDK(connection);
+//     const mint = new PublicKey("6oyodsxBXqdjsvgY2VrxrXx1G4tiqKoZExYNoUgRpump");
+//     const sdk = new PumpFunSDK(connection);
 
-    const userAta = getAssociatedTokenAddressSync(mint, signer.publicKey, true);
-    console.log("User ATA:", userAta.toBase58());
+//     const userAta = getAssociatedTokenAddressSync(mint, signer.publicKey, true);
+//     console.log("User ATA:", userAta.toBase58());
 
-    const tokenAccountInfo = await connection.getTokenAccountBalance(userAta);
+//     const tokenAccountInfo = await connection.getTokenAccountBalance(userAta);
 
-    if (!tokenAccountInfo) {
-        console.error("User ATA account not found");
-        return;
-    }
+//     if (!tokenAccountInfo) {
+//         console.error("User ATA account not found");
+//         return;
+//     }
 
-    console.log("User Token Hoding amount:", tokenAccountInfo.value.uiAmount);
-    const tx2 = await sdk.getSelltxs(mint,signer.publicKey,10,new BN(tokenAccountInfo.value.amount),new BN(-1));
+//     console.log("User Token Hoding amount:", tokenAccountInfo.value.uiAmount);
+//     const tx2 = await sdk.getSellTxs(mint,signer.publicKey,10,new BN(tokenAccountInfo.value.amount),new BN(-1));
 
-    const transection = new Transaction().add(...tx2);
-    const latestBlockhash = await connection.getLatestBlockhash();
-    transection.recentBlockhash = latestBlockhash.blockhash;
-    transection.feePayer = signer.publicKey;
+//     const transection = new Transaction().add(...tx2);
+//     const latestBlockhash = await connection.getLatestBlockhash();
+//     transection.recentBlockhash = latestBlockhash.blockhash;
+//     transection.feePayer = signer.publicKey;
 
-    const simulatedTx = await connection.simulateTransaction(transection);
-    console.log("Simulation Result:", simulatedTx);
+//     const simulatedTx = await connection.simulateTransaction(transection);
+//     console.log("Simulation Result:", simulatedTx);
 
-    // const signature = await connection.sendTransaction(transection, [signer]);
+//     const signature = await connection.sendTransaction(transection, [signer]);
 
-    // console.log("Transaction Signature:", signature);
-    // const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    // console.log("Transaction Confirmation:", confirmation);
+//     console.log("Transaction Signature:", signature);
+//     const confirmation = await connection.confirmTransaction(signature, "confirmed");
+//     console.log("Transaction Confirmation:", confirmation);
 
-};
+// };
 
 
 // createToken();
