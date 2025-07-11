@@ -2,11 +2,12 @@ import pumpIdl from "./IDL/pump.json";
 import { Pump } from "./IDL/pump";
 import * as anchor from "@coral-xyz/anchor";
 import BN from "bn.js";
-import { AccountInfo, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { AccountInfo, clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { bondingCurvePda, creatorVaultPda, globalPda } from "./pda";
 import { BondingCurve, Global } from "./types";
 import {  createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import dotenv from "dotenv";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 export const PUMP_PROGRAM_ID = new PublicKey(
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
 );
@@ -19,6 +20,32 @@ dotenv.config();
 
 type PublicKeyData = {};
 type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKeyData;
+type Error = {};
+
+
+export enum PumpFunErrorType {
+  BONDING_CURVE_NOT_FOUND = "BONDING_CURVE_NOT_FOUND",
+  GLOBAL_DATA_NOT_FOUND = "GLOBAL_DATA_NOT_FOUND",
+  INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  INVALID_PARAMETERS = "INVALID_PARAMETERS",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR"
+}
+
+export interface PumpFunError {
+  type: PumpFunErrorType;
+  message: string;
+  details?: any;
+}
+
+export type PumpFunResult<T> = {
+  success: true;
+  data: T;
+} | {
+  success: false;
+  error: PumpFunError;
+};
+
 
 export class PumpFunSDK {
   private program: anchor.Program<Pump>;
@@ -33,14 +60,57 @@ export class PumpFunSDK {
     this.program = pumpProgram;
   }
 
-  async getBuytxs(mint:PublicKey,user:PublicKey,
-        bondingCurveAccountInfo: AccountInfo<Buffer> | null,
-        newCoinCreator: PublicKey,
+  async getBuyTxs(mint:PublicKey,user:PublicKey,
         slippage: number,
-        bondingCurve: BondingCurve,
         amount: BN,
         solAmount: BN,
-  ): Promise<TransactionInstruction[]> {
+  ): Promise<PumpFunResult<TransactionInstruction[]>>  {
+
+   try{
+
+
+      if (!mint || !user || !amount || !solAmount) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Invalid parameters provided",
+            details: { mint, user, amount, solAmount }
+          }
+        };
+      }
+
+
+       if (slippage < 0 ) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Slippage canot be in negative",
+            details: { slippage }
+          }
+        };
+      }
+
+
+    const bonding_curvePda =  this.bondingCurvePda(mint);
+
+    console.log("Bonding Curve PDA:", bonding_curvePda.toBase58());
+    const bondingCurveAccountInfo = await this.program.provider.connection.getAccountInfo(bonding_curvePda);
+
+
+   if (!bondingCurveAccountInfo) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.BONDING_CURVE_NOT_FOUND,
+            message: "Bonding Curve account not found for this token",
+            details: { mint: mint.toBase58(), bondingCurvePda: bonding_curvePda.toBase58() }
+          }
+        };
+      }
+
+   const bonding_curve_data = await this.fetchBondingCurve(mint);
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
@@ -78,21 +148,63 @@ export class PumpFunSDK {
               user,
               creatorVault: this.creatorVaultPda(
                 bondingCurveAccountInfo === null
-                  ? newCoinCreator
-                  : bondingCurve.creator,
+                  ? bonding_curve_data.creator
+                  : bonding_curve_data.creator,
               ),
             })
             .instruction(),
         );
 
-        return instructions;
+      return {
+        success: true,
+        data: instructions
+      };
+
+   }
+   catch(error){
+    console.error("Error in getBuyTxs:", error);
+      return {
+        success: false,
+        error: {
+          type: PumpFunErrorType.UNKNOWN_ERROR,
+          message: error instanceof Error ? error.message : "An unknown error occurred",
+          details: error
+        }
+      };
+   }
+
   }
 
-  async getSelltxs(mint:PublicKey,user:PublicKey,
+  async getSellTxs(mint:PublicKey,user:PublicKey,
         slippage: number,
         amount: BN,
         solAmount: BN,
-  ): Promise<TransactionInstruction[]> {
+  ):  Promise<PumpFunResult<TransactionInstruction[]>> {
+
+    try{
+       if (!mint || !user || !amount || !solAmount) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Invalid parameters provided",
+            details: { mint, user, amount, solAmount }
+          }
+        };
+      }
+
+
+       if (slippage < 0 ) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Slippage cant be in negative",
+            details: { slippage }
+          }
+        };
+      }
+
    const instructions:TransactionInstruction[] = [];
    const associatedUser = getAssociatedTokenAddressSync(mint,user,true);
 
@@ -119,18 +231,51 @@ export class PumpFunSDK {
             .instruction(),
         );
 
-        return instructions;
+        return {
+        success: true,
+        data: instructions
+      };
+    }
+    catch(error){
+     console.error("Error in getSellTxs:", error);
+      return {
+        success: false,
+        error: {
+          type: PumpFunErrorType.UNKNOWN_ERROR,
+          message: error instanceof Error ? error.message : "An unknown error occurred",
+          details: error
+        }
+      };
+
+    }
+
+
   }
 
-  async getCreatetxs(
+  async getCreateTxs(
     mint: PublicKey,
     name: string,
     symbol: string,
     uri: string,
     creator: PublicKey,
     user: PublicKey,
-  ):Promise<TransactionInstruction> {
-     return await this.program.methods
+  ): Promise<PumpFunResult<TransactionInstruction>> {
+    
+    try{
+
+      if (!mint || !name || !symbol || !uri || !creator || !user) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Invalid parameters provided for token creation",
+            details: { mint, name, symbol, uri, creator, user }
+          }
+        };
+      }
+
+
+      const createInstruction = await this.program.methods
      .create(
         name,
         symbol,
@@ -140,11 +285,45 @@ export class PumpFunSDK {
         mint,
         user
      }).instruction();
+
+
+      return {
+        success: true,
+        data: createInstruction
+      };
+    }
+    catch(error){
+    console.error("Error in getCreateTxs:", error);
+      return {
+        success: false,
+        error: {
+          type: PumpFunErrorType.UNKNOWN_ERROR,
+          message: error instanceof Error ? error.message : "An unknown error occurred",
+          details: error
+        }
+      };
+    }
   }
 
-   globalPda() {
-    return globalPda(this.program.programId);
+  
+  async createAndBuy(
+    mint: PublicKey,
+    name: string,
+    symbol: string,
+    uri: string,
+    creator: PublicKey,
+    user: PublicKey,
+    amount: BN,
+    solAmount: BN,
+  ){
+
   }
+  
+
+
+   globalPda() {
+     return globalPda(this.program.programId);
+   }
 
     bondingCurvePda(mint: PublicKey | string): PublicKey {
     return bondingCurvePda(this.program.programId, mint);
@@ -175,6 +354,7 @@ function getFeeRecipient(global: Global): PublicKey {
   const feeRecipients = [global.feeRecipient, ...global.feeRecipients];
   return feeRecipients[Math.floor(Math.random() * feeRecipients.length)];
 }
+
 
 
 
