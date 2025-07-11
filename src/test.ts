@@ -12,28 +12,28 @@ const signer = Keypair.fromSecretKey(
 
 
 
-// const createToken = async() =>{
-//     const sdk = new PumpFunSDK(connection);
+const createToken = async() =>{
+    const sdk = new PumpFunSDK(connection);
 
-//     const tokenMint = Keypair.generate();
-//     const tx3 = await sdk.getCreateTxs(tokenMint.publicKey,"PUMP SDK","PSDK","https://ipfs.io/ipfs/QmNwbGHa81nQAygoH5LWQU2KTrzqHQRSpUkAUgn7R9gzAv",signer.publicKey,signer.publicKey)
+    const tokenMint = Keypair.generate();
+    const tx3 = await sdk.getCreateTxs(tokenMint.publicKey,"PUMP SDK","PSDK","https://ipfs.io/ipfs/QmNwbGHa81nQAygoH5LWQU2KTrzqHQRSpUkAUgn7R9gzAv",signer.publicKey,signer.publicKey)
 
-//     console.log("Transaction Instructions:", tx3);
+    console.log("Transaction Instructions:", tx3);
 
-//     const transection = new Transaction().add(tx3);
-//     const latestBlockhash = await connection.getLatestBlockhash();
-//     transection.recentBlockhash = latestBlockhash.blockhash;
-//     transection.feePayer = signer.publicKey;
+    const transection = new Transaction().add(tx3);
+    const latestBlockhash = await connection.getLatestBlockhash();
+    transection.recentBlockhash = latestBlockhash.blockhash;
+    transection.feePayer = signer.publicKey;
 
-//     const simulatedTx = await connection.simulateTransaction(transection);
-//     console.log("Simulation Result:", simulatedTx);
+    const simulatedTx = await connection.simulateTransaction(transection);
+    console.log("Simulation Result:", simulatedTx);
 
-//     // const signature = await connection.sendTransaction(transection, [signer]);
+    // const signature = await connection.sendTransaction(transection, [signer]);
 
-//     // console.log("Transaction Signature:", signature);
-//     // const confirmation = await connection.confirmTransaction(signature, "confirmed");
-//     // console.log("Transaction Confirmation:", confirmation);
-// }
+    // console.log("Transaction Signature:", signature);
+    // const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    // console.log("Transaction Confirmation:", confirmation);
+}
 
 
 const buyToken = async() =>{

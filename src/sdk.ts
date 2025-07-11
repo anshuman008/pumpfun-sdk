@@ -23,7 +23,6 @@ type PublicKeyInitData = number | string | Uint8Array | Array<number> | PublicKe
 type Error = {};
 
 
-// Define specific error types for better error handling
 export enum PumpFunErrorType {
   BONDING_CURVE_NOT_FOUND = "BONDING_CURVE_NOT_FOUND",
   GLOBAL_DATA_NOT_FOUND = "GLOBAL_DATA_NOT_FOUND",
@@ -39,7 +38,6 @@ export interface PumpFunError {
   details?: any;
 }
 
-// Result type for better type safety
 export type PumpFunResult<T> = {
   success: true;
   data: T;
@@ -184,8 +182,6 @@ export class PumpFunSDK {
   ):  Promise<PumpFunResult<TransactionInstruction[]>> {
 
     try{
-
-
        if (!mint || !user || !amount || !solAmount) {
         return {
           success: false,
@@ -263,8 +259,23 @@ export class PumpFunSDK {
     uri: string,
     creator: PublicKey,
     user: PublicKey,
-  ):Promise<TransactionInstruction> {
-     return await this.program.methods
+  ): Promise<PumpFunResult<TransactionInstruction>> {
+    
+    try{
+
+      if (!mint || !name || !symbol || !uri || !creator || !user) {
+        return {
+          success: false,
+          error: {
+            type: PumpFunErrorType.INVALID_PARAMETERS,
+            message: "Invalid parameters provided for token creation",
+            details: { mint, name, symbol, uri, creator, user }
+          }
+        };
+      }
+
+
+      const createInstruction = await this.program.methods
      .create(
         name,
         symbol,
@@ -274,6 +285,24 @@ export class PumpFunSDK {
         mint,
         user
      }).instruction();
+
+
+      return {
+        success: true,
+        data: createInstruction
+      };
+    }
+    catch(error){
+    console.error("Error in getCreateTxs:", error);
+      return {
+        success: false,
+        error: {
+          type: PumpFunErrorType.UNKNOWN_ERROR,
+          message: error instanceof Error ? error.message : "An unknown error occurred",
+          details: error
+        }
+      };
+    }
   }
 
    globalPda() {
