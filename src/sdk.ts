@@ -217,7 +217,7 @@ export class PumpFunSDK {
           await this.program.methods
             .sell(
               amount,
-              solAmount.add(
+              solAmount.sub(
                 solAmount
                   .mul(new BN(Math.floor(slippage * 10)))
                   .div(new BN(1000)),
