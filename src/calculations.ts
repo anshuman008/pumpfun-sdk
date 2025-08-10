@@ -1,5 +1,6 @@
-import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { BondingCurve } from "./types";
+import BN from "bn.js";
+import { BondingCurve,Global } from "./types";
+import { PublicKey } from "@solana/web3.js";
 
 
 
@@ -44,3 +45,87 @@ export const getBuyPrice = (amount: bigint , virtual_sol_reserve: bigint ,virtua
 }
 
 
+export function newBondingCurve(global: Global): BondingCurve {
+  return {
+    virtualTokenReserves: global.initialVirtualTokenReserves,
+    virtualSolReserves: global.initialVirtualSolReserves,
+    realTokenReserves: global.initialRealTokenReserves,
+    realSolReserves: new BN(0),
+    tokenTotalSupply: global.tokenTotalSupply,
+    complete: false,
+    creator: PublicKey.default,
+  };
+}
+
+function computeFee(amount: BN, feeBasisPoints: BN): BN {
+  return ceilDiv(amount.mul(feeBasisPoints), new BN(10_000));
+}
+
+function ceilDiv(a: BN, b: BN): BN {
+  return a.add(b.subn(1)).div(b);
+}
+
+function getFee(
+  global: Global,
+  bondingCurve: BondingCurve,
+  amount: BN,
+  isNewBondingCurve: boolean,
+): BN {
+  return computeFee(amount, global.feeBasisPoints).add(
+    isNewBondingCurve || !PublicKey.default.equals(bondingCurve.creator)
+      ? computeFee(amount, global.creatorFeeBasisPoints)
+      : new BN(0),
+  );
+}
+
+export function getBuySolFromToken(
+  global: Global,
+  bondingCurve: BondingCurve | null,
+  amount: BN,
+): BN {
+  if (amount.eq(new BN(0))) {
+    return new BN(0);
+  }
+
+  let isNewBondingCurve = false;
+
+  if (bondingCurve === null) {
+    bondingCurve = newBondingCurve(global);
+    isNewBondingCurve = true;
+  }
+
+  // migrated bonding curve
+  if (bondingCurve.virtualTokenReserves.eq(new BN(0))) {
+    return new BN(0);
+  }
+
+  const minAmount = BN.min(amount, bondingCurve.realTokenReserves);
+
+  const solCost = minAmount
+    .mul(bondingCurve.virtualSolReserves)
+    .div(bondingCurve.virtualTokenReserves.sub(minAmount))
+    .add(new BN(1));
+
+  return solCost.add(getFee(global, bondingCurve, solCost, isNewBondingCurve));
+}
+
+export function getSolFromToken(
+  global: Global,
+  bondingCurve: BondingCurve,
+  amount: BN,
+): BN {
+  if (amount.eq(new BN(0))) {
+    return new BN(0);
+  }
+
+  // migrated bonding curve
+  if (bondingCurve.virtualTokenReserves.eq(new BN(0))) {
+    return new BN(0);
+  }
+
+  const solCost = amount
+    .mul(bondingCurve.virtualSolReserves)
+    .div(bondingCurve.virtualTokenReserves.add(amount));
+
+  return solCost.sub(getFee(global, bondingCurve, solCost, false));
+}

@@ -18,6 +18,8 @@ export interface Global {
   poolMigrationFee: BN;
   creatorFeeBasisPoints: BN;
   feeRecipients: PublicKey[];
+  setCreatorAuthority: PublicKey;
+  adminSetCreatorAuthority: PublicKey;
 }
 
 export interface BondingCurve {
