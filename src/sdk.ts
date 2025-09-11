@@ -184,7 +184,6 @@ export class PumpFunSDK {
     }
   }
 
-  
   async getSellTxs(
     mint: PublicKey,
     user: PublicKey,
@@ -344,6 +343,16 @@ export class PumpFunSDK {
         },
       };
     }
+  }
+
+  async collectFees(creator: PublicKey, creatorVault: PublicKey) {
+    return this.program.methods
+      .collectCreatorFee()
+      .accountsPartial({
+        creator: creator,
+        creatorVault: creatorVault,
+      })
+      .instruction();
   }
 
   async extendAccountInstruction({
